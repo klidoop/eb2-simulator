@@ -8,7 +8,20 @@ from datetime import datetime
 from scipy.stats import lognorm
 
 # 设置 matplotlib 中文支持
-matplotlib.rcParams['font.family'] = 'DejaVu Sans'
+import os
+import matplotlib.font_manager as fm
+
+font_path = '/tmp/simhei.ttf'
+if not os.path.exists(font_path):
+    import urllib.request
+    urllib.request.urlretrieve(
+        'https://github.com/ssine/font/raw/master/simhei.ttf',
+        font_path
+    )
+
+fm.fontManager.addfont(font_path)
+matplotlib.rc('font', family='SimHei')
+
 
 class EB2PredictorImproved:
     def __init__(self, baseline_date='2025-05', target_pd='2022-11', backlog_mode='中性'):
