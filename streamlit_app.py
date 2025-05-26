@@ -242,19 +242,16 @@ if run_simulation:
     ax.set_xlabel("Months to Current (距离排到的月份)")
     ax.set_ylabel("Simulation Count (模拟次数)")
     ax.legend()
-    st.pypst.markdown(f"""
-    ### 🧠 Simulation Summary 模拟结果摘要
-    - Median wait time: **{int(results.median())} months**
-    - Expected PD becomes current: **{projected_date.strftime('%Y-%m')}**
-    - Range: {int(results.min())} to {int(results.max())} months
-    - Assumption Mode: **{backlog_mode}**
-    """)
+    st.pyplot(fig)
 
-    # 展示历史对比表格
-    if st.session_state.simulation_history:
-        st.markdown("### 📂 Comparison of Saved Simulations")
-        hist_df = pd.DataFrame(st.session_state.simulation_history)
-        st.dataframe(hist_df)"base_speed"],
+    projected_date = pd.to_datetime("2025-05") + pd.DateOffset(months=int(results.median()))
+
+    # 保存本次模拟记录
+    st.session_state.simulation_history.append({
+        "Profile": profile,
+        "Backlog": backlog_mode,
+        "Spillover": params["spillover"],
+        "MonthlySpeed": params["base_speed"],
         "WithdrawalRate": params["withdrawal_rate"],
         "MedianMonths": int(results.median()),
         "MinMonths": int(results.min()),
@@ -269,3 +266,9 @@ if run_simulation:
     - Range: {int(results.min())} to {int(results.max())} months
     - Assumption Mode: **{backlog_mode}**
     """)
+
+    # 展示历史对比表格
+    if st.session_state.simulation_history:
+        st.markdown("### 📂 Comparison of Saved Simulations")
+        hist_df = pd.DataFrame(st.session_state.simulation_history)
+        st.dataframe(hist_df)
