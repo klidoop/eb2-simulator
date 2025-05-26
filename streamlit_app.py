@@ -36,6 +36,8 @@ presets = {
 st.sidebar.header("🔧 Simulation Parameters")
 profile = st.sidebar.selectbox("Preset Profile", list(presets.keys()), help="Choose a predefined set of assumptions for backlog and risk")
 
+run_simulation = st.sidebar.button("Run Simulation")
+
 # Force update on profile change
 if "last_profile" not in st.session_state:
     st.session_state.last_profile = profile
@@ -113,7 +115,6 @@ backlog_mode = st.sidebar.selectbox(
     index=1,
     help="Choose assumed severity of existing backlog"
 )
-run_simulation = st.sidebar.button("Run Simulation")
 
 # 页面标题
 st.title("🇨🇳 EB2 Priority Date Forecast Simulator")
