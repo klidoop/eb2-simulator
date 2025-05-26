@@ -93,3 +93,94 @@ st.markdown("### 📊 Assumptions Summary")
 st.dataframe(assumption_table, use_container_width=True)
 
 st.title("🇨🇳 EB2 Priority Date Forecast Simulator")
+
+# UI inputs
+col1, col2 = st.columns(2)
+with col1:
+    target_pd = st.date_input("Your Priority Date (你的优先日)", value=datetime(2022, 11, 1))
+with col2:
+    trials = st.slider("Number of Simulations (模拟次数)", min_value=100, max_value=2000, value=300, step=100)
+
+backlog_mode = st.selectbox("Backlog Scenario (积压场景)", options=["Optimistic", "Neutral", "Pessimistic"], index=1)
+
+# Define class and run model
+class EB2Predictor:
+    def __init__(self, target_pd, backlog_mode):
+        self.target_pd = pd.to_datetime(target_pd)
+        self.backlog_mode = backlog_mode
+        self.base_speed = params['base_speed'] * historical_speed_avg
+        self.speed_variation = lognorm(s=0.25)
+        self.withdrawal_rate = params['withdrawal_rate']
+        self.policy_prob = params['policy_risk_prob']
+        self.policy_impact = {
+            'positive': [0.02, params['positive_policy_boost']],
+            'negative': [-params['negative_policy_penalty'], -0.05]
+        }
+        self.histogram = self._generate_backlog()
+
+    def _generate_backlog(self):
+        months = pd.date_range('2020-12', '2023-01', freq='MS')
+        if self.backlog_mode == 'Optimistic':
+            return pd.Series(np.random.randint(300, 500, len(months)), index=months)
+        elif self.backlog_mode == 'Pessimistic':
+            return pd.Series(np.random.randint(800, 1100, len(months)), index=months)
+        else:
+            return pd.Series(np.random.randint(400, 900, len(months)), index=months)
+
+    def _policy_adjustment(self):
+        if np.random.rand() < self.policy_prob:
+            direction = np.random.choice(['positive', 'negative'], p=[0.3, 0.7])
+            return 1 + np.random.uniform(*self.policy_impact[direction])
+        return 1
+
+    def simulate_once(self):
+        backlog = self.histogram.copy()
+        current = 0
+        target_idx = np.searchsorted(backlog.index, self.target_pd)
+        months = 0
+
+        while current < target_idx and months < 120:
+            policy_factor = self._policy_adjustment()
+            actual_speed = int(self.base_speed * self.speed_variation.rvs() * policy_factor)
+            withdrawals = int(backlog.sum() * (self.withdrawal_rate / 12))
+            actual_speed += withdrawals
+
+            for i in range(current, len(backlog)):
+                if actual_speed <= 0:
+                    break
+                if backlog.iloc[i] <= actual_speed:
+                    actual_speed -= backlog.iloc[i]
+                    backlog.iloc[i] = 0
+                    current = i + 1
+                else:
+                    backlog.iloc[i] -= actual_speed
+                    actual_speed = 0
+            months += 1
+
+        return months
+
+    def simulate(self, n):
+        return pd.Series([self.simulate_once() for _ in range(n)])
+
+if st.button("Run Simulation"):
+    with st.spinner("Running simulation... 模型运行中..."):
+        model = EB2Predictor(target_pd=target_pd, backlog_mode=backlog_mode)
+        results = model.simulate(trials)
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    sns.histplot(results, bins=30, kde=True, ax=ax, color='skyblue')
+    ax.axvline(results.median(), color='red', linestyle='--', label=f'Median: {results.median()} months')
+    ax.set_title("Projected Wait Time Distribution (预测等待时间分布)")
+    ax.set_xlabel("Months to Current (距离排到的月份)")
+    ax.set_ylabel("Simulation Count (模拟次数)")
+    ax.legend()
+    st.pyplot(fig)
+
+    projected_date = pd.to_datetime("2025-05") + pd.DateOffset(months=int(results.median()))
+    st.markdown(f"""
+    ### 🧠 Simulation Summary 模拟结果摘要
+    - Median wait time: **{int(results.median())} months**
+    - Expected PD becomes current: **{projected_date.strftime('%Y-%m')}**
+    - Range: {int(results.min())} to {int(results.max())} months
+    - Assumption Mode: **{backlog_mode}**
+    """)
