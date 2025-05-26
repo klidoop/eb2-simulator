@@ -34,9 +34,9 @@ presets = {
 }
 
 st.sidebar.header("🔧 Simulation Parameters")
+run_simulation = st.sidebar.button("Run Simulation")
 profile = st.sidebar.selectbox("Preset Profile", list(presets.keys()), help="Choose a predefined set of assumptions for backlog and risk")
 
-run_simulation = st.sidebar.button("Run Simulation")
 
 # Force update on profile change
 if "last_profile" not in st.session_state:
