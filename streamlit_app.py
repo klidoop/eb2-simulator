@@ -161,6 +161,9 @@ with col1:
     target_pd = st.date_input("Your Priority Date (你的优先日)", value=datetime(2022, 11, 1))
 with col2:
     trials = st.slider("Number of Simulations (模拟次数)", min_value=100, max_value=2000, value=300, step=100)
+    run_simulation_right = st.button("🚀 Run Simulation (Right)", type="primary")
+    if run_simulation_right:
+        run_simulation = True
 
 # 定义模拟器类
 class EB2Predictor:
