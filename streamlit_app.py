@@ -48,6 +48,7 @@ if "params" not in st.session_state or st.sidebar.button("Reset to Defaults"):
     st.session_state.params = presets[profile].copy()
 
 params = st.session_state.params
+params.setdefault("spillover", 1148)
 
 params["base_speed"] = st.sidebar.number_input(
     label="Monthly Processing Base (基准处理速度)",
