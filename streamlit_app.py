@@ -225,6 +225,10 @@ class EB2Predictor:
     def simulate(self, n):
         return pd.Series([self.simulate_once() for _ in range(n)])
 
+# 初始化历史记录存储
+if "simulation_history" not in st.session_state:
+    st.session_state.simulation_history = []
+
 # 执行模拟逻辑
 if run_simulation:
     with st.spinner("Running simulation... 模型运行中..."):
@@ -238,9 +242,26 @@ if run_simulation:
     ax.set_xlabel("Months to Current (距离排到的月份)")
     ax.set_ylabel("Simulation Count (模拟次数)")
     ax.legend()
-    st.pyplot(fig)
+    st.pypst.markdown(f"""
+    ### 🧠 Simulation Summary 模拟结果摘要
+    - Median wait time: **{int(results.median())} months**
+    - Expected PD becomes current: **{projected_date.strftime('%Y-%m')}**
+    - Range: {int(results.min())} to {int(results.max())} months
+    - Assumption Mode: **{backlog_mode}**
+    """)
 
-    projected_date = pd.to_datetime("2025-05") + pd.DateOffset(months=int(results.median()))
+    # 展示历史对比表格
+    if st.session_state.simulation_history:
+        st.markdown("### 📂 Comparison of Saved Simulations")
+        hist_df = pd.DataFrame(st.session_state.simulation_history)
+        st.dataframe(hist_df)"base_speed"],
+        "WithdrawalRate": params["withdrawal_rate"],
+        "MedianMonths": int(results.median()),
+        "MinMonths": int(results.min()),
+        "MaxMonths": int(results.max()),
+        "ProjectedDate": projected_date.strftime('%Y-%m')
+    })
+
     st.markdown(f"""
     ### 🧠 Simulation Summary 模拟结果摘要
     - Median wait time: **{int(results.median())} months**
