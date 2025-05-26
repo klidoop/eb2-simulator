@@ -106,7 +106,7 @@ params["spillover"] = st.sidebar.number_input(
 # 计算配额（用于模型实际速度上限）
 params["monthly_quota"] = (2803 + params["spillover"]) / 12
 
-# Move backlog scenario into sidebar
+# Move backlog scenario and run button into sidebar
 backlog_mode = st.sidebar.selectbox(
     label="Backlog Scenario (积压场景)",
     options=["Optimistic", "Neutral", "Pessimistic"],
@@ -159,7 +159,7 @@ with col1:
     target_pd = st.date_input("Your Priority Date (你的优先日)", value=datetime(2022, 11, 1))
 with col2:
     trials = st.slider("Number of Simulations (模拟次数)", min_value=100, max_value=2000, value=300, step=100)
-    run_simulation_right = st.button("🚀 Run Simulation", type="primary")
+    run_simulation_right = st.button("🚀 Run Simulation (Right)", type="primary")
     if run_simulation_right:
         run_simulation = True
 
