@@ -34,7 +34,7 @@ presets = {
 }
 
 st.sidebar.header("🔧 Simulation Parameters")
-profile = st.sidebar.selectbox("Preset Profile", list(presets.keys()))
+profile = st.sidebar.selectbox("Preset Profile", list(presets.keys()), help="Choose a predefined set of assumptions for backlog and risk")
 
 # Force update on profile change
 if "last_profile" not in st.session_state:
@@ -49,11 +49,50 @@ if "params" not in st.session_state or st.sidebar.button("Reset to Defaults"):
 
 params = st.session_state.params
 
-params["base_speed"] = st.sidebar.number_input("Monthly Processing Base (基准处理速度)", min_value=50, max_value=1000, value=params["base_speed"], key="base_speed")
-params["withdrawal_rate"] = st.sidebar.slider("Annual Withdrawal Rate (申请人流失率)", 0.0, 0.3, value=params["withdrawal_rate"], step=0.01, key="withdrawal_rate")
-params["policy_risk_prob"] = st.sidebar.slider("Policy Risk Probability (政策变动概率)", 0.0, 0.5, value=params["policy_risk_prob"], step=0.01, key="policy_risk_prob")
-params["positive_policy_boost"] = st.sidebar.slider("Positive Policy Boost (%)", 0.0, 0.3, value=params["positive_policy_boost"], step=0.01, key="positive_policy_boost")
-params["negative_policy_penalty"] = st.sidebar.slider("Negative Policy Penalty (%)", 0.0, 0.5, value=params["negative_policy_penalty"], step=0.01, key="negative_policy_penalty")
+params["base_speed"] = st.sidebar.number_input(
+    label="Monthly Processing Base (基准处理速度)",
+    min_value=50,
+    max_value=1000,
+    value=params["base_speed"],
+    key="base_speed",
+    help="Average number of EB2 cases processed per month before adjustment"
+)
+params["withdrawal_rate"] = st.sidebar.slider(
+    label="Annual Withdrawal Rate (申请人流失率)",
+    min_value=0.0,
+    max_value=0.3,
+    value=params["withdrawal_rate"],
+    step=0.01,
+    key="withdrawal_rate",
+    help="Percentage of applicants who drop out or switch categories annually"
+)
+params["policy_risk_prob"] = st.sidebar.slider(
+    label="Policy Risk Probability (政策变动概率)",
+    min_value=0.0,
+    max_value=0.5,
+    value=params["policy_risk_prob"],
+    step=0.01,
+    key="policy_risk_prob",
+    help="Chance that a major immigration policy event affects processing speed in a given month"
+)
+params["positive_policy_boost"] = st.sidebar.slider(
+    label="Positive Policy Boost (%)",
+    min_value=0.0,
+    max_value=0.3,
+    value=params["positive_policy_boost"],
+    step=0.01,
+    key="positive_policy_boost",
+    help="If a positive policy change occurs, maximum boost to processing speed"
+)
+params["negative_policy_penalty"] = st.sidebar.slider(
+    label="Negative Policy Penalty (%)",
+    min_value=0.0,
+    max_value=0.5,
+    value=params["negative_policy_penalty"],
+    step=0.01,
+    key="negative_policy_penalty",
+    help="If a negative policy change occurs, maximum reduction to processing speed"
+)
 
 # Assumptions table
 assumption_table = pd.DataFrame({
