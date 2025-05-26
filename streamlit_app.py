@@ -83,41 +83,63 @@ class EB2PredictorImproved:
         return pd.Series([self.__class__(target_pd=self.target_pd.strftime('%Y-%m'), backlog_mode=self.backlog_mode).simulate_single_run() for _ in range(trials)])
 
 # Streamlit UI
-st.set_page_config(page_title="EB2 China PD Simulator", layout="centered")
-st.title("🇨🇳 EB2 China Priority Date Forecast")
+st.set_page_config(page_title="EB2/EB3 Priority Date Forecast", layout="centered")
+st.title("🇨🇳 EB2 vs EB3 Priority Date Forecast")
 
 st.markdown("""
 ### Model Overview
-- This simulator uses Monte Carlo methods to estimate how long it will take for your PD to become current.
-- It models historical backlog, processing capacity, and random policy shocks.
-- You can toggle backlog scenario assumptions (Optimistic / Neutral / Pessimistic).
-- NOTE: This is a predictive tool and **not official guidance**.
+This simulator uses Monte Carlo methods to estimate how long it will take for your Priority Date (PD) to become current under different assumptions:
+- You can simulate EB2 or EB3 backlog independently.
+- Backlog scenarios (Optimistic / Neutral / Pessimistic) represent filing intensity and visa demand.
+- All estimates are probabilistic, not official.
 """)
 
-target_pd = st.date_input("Your Priority Date", value=datetime(2022, 11, 1))
-trials = st.slider("Number of Simulations", min_value=100, max_value=2000, value=300, step=100)
-backlog_mode = st.selectbox("Backlog Assumption", options=["Optimistic", "Neutral", "Pessimistic"], index=1)
+# User inputs
+col1, col2 = st.columns(2)
+with col1:
+    target_pd = st.date_input("Your Priority Date", value=datetime(2022, 11, 1), key="eb2_date")
+with col2:
+    trials = st.slider("Number of Simulations", min_value=100, max_value=2000, value=300, step=100)
 
-if st.button("Run Simulation"):
+backlog_mode_eb2 = st.selectbox("EB2 Backlog Assumption", options=["Optimistic", "Neutral", "Pessimistic"], index=1, key="eb2_mode")
+backlog_mode_eb3 = st.selectbox("EB3 Backlog Assumption", options=["Optimistic", "Neutral", "Pessimistic"], index=1, key="eb3_mode")
+
+if st.button("Compare EB2 vs EB3"):
     with st.spinner("Running simulations..."):
-        simulator = EB2PredictorImproved(target_pd=target_pd.strftime('%Y-%m'), backlog_mode=backlog_mode)
-        results = simulator.simulate(trials=trials)
+        eb2_simulator = EB2PredictorImproved(target_pd=target_pd.strftime('%Y-%m'), backlog_mode=backlog_mode_eb2)
+        eb3_simulator = EB2PredictorImproved(target_pd=target_pd.strftime('%Y-%m'), backlog_mode=backlog_mode_eb3)
+        eb2_results = eb2_simulator.simulate(trials=trials)
+        eb3_results = eb3_simulator.simulate(trials=trials)
 
     fig, ax = plt.subplots(figsize=(10, 6))
-    sns.histplot(results, bins=30, kde=True, color='steelblue', ax=ax)
-    ax.axvline(results.median(), color='red', linestyle='--', label=f'Median: {results.median()} months')
-    ax.set_title("Distribution of Months Required to Reach Your PD")
-    ax.set_xlabel("Months Needed")
+    sns.histplot(eb2_results, bins=30, kde=True, label='EB2', color='skyblue', ax=ax)
+    sns.histplot(eb3_results, bins=30, kde=True, label='EB3', color='salmon', ax=ax)
+    ax.axvline(eb2_results.median(), color='blue', linestyle='--', label=f'EB2 Median: {eb2_results.median()} mo')
+    ax.axvline(eb3_results.median(), color='red', linestyle='--', label=f'EB3 Median: {eb3_results.median()} mo')
+    ax.set_title("Comparison of EB2 vs EB3 Wait Times")
+    ax.set_xlabel("Months to Current")
     ax.set_ylabel("Simulation Count")
     ax.legend()
     st.pyplot(fig)
 
-    projected_date = pd.to_datetime('2025-05') + pd.DateOffset(months=int(results.median()))
+    projected_eb2 = pd.to_datetime('2025-05') + pd.DateOffset(months=int(eb2_results.median()))
+    projected_eb3 = pd.to_datetime('2025-05') + pd.DateOffset(months=int(eb3_results.median()))
+
+    diff = int(eb2_results.median() - eb3_results.median())
+    recommendation = "**🟢 Downgrade is likely beneficial**" if diff > 4 else "**⚪️ Downgrade advantage is marginal or uncertain**"
+
     st.markdown(f"""
     ### 🧠 Simulation Summary
-    - Median wait time: **{int(results.median())} months**
-    - Expected current date: **{projected_date.strftime('%Y-%m')}**
-    - Fastest case: **{int(results.min())} months**
-    - Slowest case: **{int(results.max())} months**
-    - Backlog scenario: **{backlog_mode}**
+    **EB2**
+    - Median wait: **{int(eb2_results.median())} months** → ~{projected_eb2.strftime('%Y-%m')}
+    - Range: {int(eb2_results.min())} to {int(eb2_results.max())} months
+    - Scenario: **{backlog_mode_eb2}**
+
+    **EB3**
+    - Median wait: **{int(eb3_results.median())} months** → ~{projected_eb3.strftime('%Y-%m')}
+    - Range: {int(eb3_results.min())} to {int(eb3_results.max())} months
+    - Scenario: **{backlog_mode_eb3}**
+
+    **📌 Recommendation:** {recommendation}
+    (EB3 is faster by {abs(diff)} months)
     """)
