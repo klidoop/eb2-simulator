@@ -115,6 +115,45 @@ backlog_mode = st.sidebar.selectbox(
 )
 run_simulation = st.sidebar.button("Run Simulation")
 
+# 页面标题
+st.title("🇨🇳 EB2 Priority Date Forecast Simulator")
+
+# Assumptions Table
+assumption_table = pd.DataFrame({
+    "Parameter": [
+        "Baseline Date",
+        "Estimated Backlog (China EB2)",
+        "Annual Visa Quota",
+        "Family-based Spillover (FY2025)",
+        "Applicant Attrition Rate",
+        "EB3 Downgrade Probability",
+        "Monthly Processing Speed",
+        "Policy Risk Probability"
+    ],
+    "Value / Assumption": [
+        "May 2025 Final Action Date = Dec 2020",
+        "38,000 cases (incl. dependents)",
+        "2,803 per year",
+        f"{params['spillover']} extra (user-defined)",
+        f"{params['withdrawal_rate']*100:.1f}% per year",
+        "31% downgrade rate",
+        f"{params['base_speed']} ± 70 cases/month",
+        f"{params['policy_risk_prob']*100:.1f}% chance"
+    ],
+    "Source": [
+        "US Dept of State Visa Bulletin (May 2025)",
+        "CEAC data modeling",
+        "INA 203(b), 7% country cap",
+        "User input",
+        "USCIS 2024 I-485 data",
+        "NSC internal downgrade stats (2025)",
+        "User adjustable",
+        "User adjustable"
+    ]
+})
+st.markdown("### 📊 Assumptions Summary")
+st.dataframe(assumption_table, use_container_width=True)
+
 # 主体输入项
 col1, col2 = st.columns(2)
 with col1:
