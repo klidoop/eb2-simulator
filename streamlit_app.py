@@ -228,7 +228,7 @@ if "simulation_history" not in st.session_state:
     st.session_state.simulation_history = []
 
 # 执行模拟逻辑
-if run_simulation:
+if run_simulation_right:
     with st.spinner("Running simulation... 模型运行中..."):
         model = EB2Predictor(target_pd=target_pd, backlog_mode=backlog_mode, params=params)
         results = model.simulate(trials)
