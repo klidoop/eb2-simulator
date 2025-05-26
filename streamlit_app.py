@@ -36,17 +36,24 @@ presets = {
 st.sidebar.header("🔧 Simulation Parameters")
 profile = st.sidebar.selectbox("Preset Profile", list(presets.keys()))
 
-# Allow override with default values
+# Force update on profile change
+if "last_profile" not in st.session_state:
+    st.session_state.last_profile = profile
+if profile != st.session_state.last_profile:
+    st.session_state.params = presets[profile].copy()
+    st.session_state.last_profile = profile
+
+# Allow reset
 if "params" not in st.session_state or st.sidebar.button("Reset to Defaults"):
     st.session_state.params = presets[profile].copy()
 
 params = st.session_state.params
 
-params["base_speed"] = st.sidebar.number_input("Monthly Processing Base (基准处理速度)", min_value=50, max_value=1000, value=params["base_speed"])
-params["withdrawal_rate"] = st.sidebar.slider("Annual Withdrawal Rate (申请人流失率)", 0.0, 0.3, value=params["withdrawal_rate"], step=0.01)
-params["policy_risk_prob"] = st.sidebar.slider("Policy Risk Probability (政策变动概率)", 0.0, 0.5, value=params["policy_risk_prob"], step=0.01)
-params["positive_policy_boost"] = st.sidebar.slider("Positive Policy Boost (%)", 0.0, 0.3, value=params["positive_policy_boost"], step=0.01)
-params["negative_policy_penalty"] = st.sidebar.slider("Negative Policy Penalty (%)", 0.0, 0.5, value=params["negative_policy_penalty"], step=0.01)
+params["base_speed"] = st.sidebar.number_input("Monthly Processing Base (基准处理速度)", min_value=50, max_value=1000, value=params["base_speed"], key="base_speed")
+params["withdrawal_rate"] = st.sidebar.slider("Annual Withdrawal Rate (申请人流失率)", 0.0, 0.3, value=params["withdrawal_rate"], step=0.01, key="withdrawal_rate")
+params["policy_risk_prob"] = st.sidebar.slider("Policy Risk Probability (政策变动概率)", 0.0, 0.5, value=params["policy_risk_prob"], step=0.01, key="policy_risk_prob")
+params["positive_policy_boost"] = st.sidebar.slider("Positive Policy Boost (%)", 0.0, 0.3, value=params["positive_policy_boost"], step=0.01, key="positive_policy_boost")
+params["negative_policy_penalty"] = st.sidebar.slider("Negative Policy Penalty (%)", 0.0, 0.5, value=params["negative_policy_penalty"], step=0.01, key="negative_policy_penalty")
 
 # Assumptions table
 assumption_table = pd.DataFrame({
@@ -85,5 +92,4 @@ assumption_table = pd.DataFrame({
 st.markdown("### 📊 Assumptions Summary")
 st.dataframe(assumption_table, use_container_width=True)
 
-# App UI continues as before... (not repeated here for brevity)
-# Ensure EB2PredictorImproved uses `params` dictionary for its config
+st.title("🇨🇳 EB2 Priority Date Forecast Simulator")
