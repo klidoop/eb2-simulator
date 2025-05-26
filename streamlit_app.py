@@ -34,7 +34,6 @@ presets = {
 }
 
 st.sidebar.header("🔧 Simulation Parameters")
-run_simulation = st.sidebar.button("🚀 Run Simulation", type="primary", help="Click to start EB2 forecast simulation")
 profile = st.sidebar.selectbox("Preset Profile", list(presets.keys()), help="Choose a predefined set of assumptions for backlog and risk")
 
 # Force update on profile change
@@ -107,14 +106,13 @@ params["spillover"] = st.sidebar.number_input(
 # 计算配额（用于模型实际速度上限）
 params["monthly_quota"] = (2803 + params["spillover"]) / 12
 
-# Move backlog scenario and run button into sidebar
+# Move backlog scenario into sidebar
 backlog_mode = st.sidebar.selectbox(
     label="Backlog Scenario (积压场景)",
     options=["Optimistic", "Neutral", "Pessimistic"],
     index=1,
     help="Choose assumed severity of existing backlog"
 )
-run_simulation = st.sidebar.button("Run Simulation")
 
 # 页面标题
 st.title("🇨🇳 EB2 Priority Date Forecast Simulator")
@@ -161,7 +159,7 @@ with col1:
     target_pd = st.date_input("Your Priority Date (你的优先日)", value=datetime(2022, 11, 1))
 with col2:
     trials = st.slider("Number of Simulations (模拟次数)", min_value=100, max_value=2000, value=300, step=100)
-    run_simulation_right = st.button("🚀 Run Simulation (Right)", type="primary")
+    run_simulation_right = st.button("🚀 Run Simulation", type="primary")
     if run_simulation_right:
         run_simulation = True
 
