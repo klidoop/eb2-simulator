@@ -9,16 +9,16 @@ import matplotlib.font_manager as fm
 from datetime import datetime
 from scipy.stats import lognorm
 
-# 设置 matplotlib 中文字体
-font_path = '/tmp/simhei.ttf'
+# 设置 matplotlib 中文字体（使用稳定 CDN）
+font_path = '/tmp/NotoSansSC-Regular.otf'
 if not os.path.exists(font_path):
     import urllib.request
     urllib.request.urlretrieve(
-        'https://github.com/ssine/font/raw/master/simhei.ttf',
+        'https://raw.githubusercontent.com/googlefonts/noto-cjk/main/Sans/OTF/SimplifiedChinese/NotoSansSC-Regular.otf',
         font_path
     )
 fm.fontManager.addfont(font_path)
-matplotlib.rc('font', family='SimHei')
+matplotlib.rc('font', family='Noto Sans SC')
 
 class EB2PredictorImproved:
     def __init__(self, baseline_date='2025-05', target_pd='2022-11', backlog_mode='中性'):
@@ -104,7 +104,7 @@ st.markdown("""
 - 本模拟器基于蒙特卡洛方法，考虑申请积压量、每月处理能力、政策扰动等多种变量。
 - 模拟以“你指定的优先日”为目标，计算当前排期推进到你这一日期所需的月数。
 - 支持选择不同积压假设（乐观 / 中性 / 悲观），反映不同 backlog 场景下的预测结果。
-- 注意：模拟结果仅用于趋势参考，非官方预测。
+- 注意：模拟结果仅用于娱乐参考：），非官方预测。
 """)
 
 target_pd = st.date_input("你的 Priority Date", value=datetime(2022, 11, 1))
