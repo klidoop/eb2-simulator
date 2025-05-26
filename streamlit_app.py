@@ -28,9 +28,9 @@ historical_speed_avg = historical_progress["Speed"].mean()
 
 # Preset profiles
 presets = {
-    "Conservative": dict(base_speed=180, withdrawal_rate=0.08, policy_risk_prob=0.2, positive_policy_boost=0.05, negative_policy_penalty=0.3),
-    "Neutral": dict(base_speed=230, withdrawal_rate=0.112, policy_risk_prob=0.1, positive_policy_boost=0.1, negative_policy_penalty=0.15),
-    "Aggressive": dict(base_speed=280, withdrawal_rate=0.15, policy_risk_prob=0.05, positive_policy_boost=0.2, negative_policy_penalty=0.05)
+    "Conservative": dict(base_speed=180, withdrawal_rate=0.08, policy_risk_prob=0.2, positive_policy_boost=0.05, negative_policy_penalty=0.3, spillover=1148),
+    "Neutral": dict(base_speed=230, withdrawal_rate=0.112, policy_risk_prob=0.1, positive_policy_boost=0.1, negative_policy_penalty=0.15, spillover=1148),
+    "Aggressive": dict(base_speed=280, withdrawal_rate=0.15, policy_risk_prob=0.05, positive_policy_boost=0.2, negative_policy_penalty=0.05, spillover=1148)
 }
 
 st.sidebar.header("🔧 Simulation Parameters")
@@ -93,6 +93,17 @@ params["negative_policy_penalty"] = st.sidebar.slider(
     key="negative_policy_penalty",
     help="If a negative policy change occurs, maximum reduction to processing speed"
 )
+params["spillover"] = st.sidebar.number_input(
+    label="Family-Based Spillover to EB2-China (家庭类签证转回数量)",
+    min_value=0,
+    max_value=10000,
+    value=params["spillover"],
+    key="spillover",
+    help="Extra visas allocated to EB2 from family-based unused quota (e.g. 1148 in FY2025)"
+)
+
+# 计算配额（用于模型实际速度上限）
+params["monthly_quota"] = (2803 + params["spillover"]) / 12
 
 # Assumptions table
 assumption_table = pd.DataFrame({
