@@ -106,63 +106,29 @@ params["spillover"] = st.sidebar.number_input(
 # 计算配额（用于模型实际速度上限）
 params["monthly_quota"] = (2803 + params["spillover"]) / 12
 
-# Assumptions table
-assumption_table = pd.DataFrame({
-    "Parameter": [
-        "Baseline Date",
-        "Estimated Backlog (China EB2)",
-        "Annual Visa Quota",
-        "Family-based Spillover (FY2025)",
-        "Applicant Attrition Rate",
-        "EB3 Downgrade Probability",
-        "Monthly Processing Speed",
-        "Policy Risk Probability"
-    ],
-    "Value / Assumption": [
-        "May 2025 Final Action Date = Dec 2020",
-        "38,000 cases (incl. dependents)",
-        "2,803 per year",
-        "1,148 extra (28% of spillover pool)",
-        f"{params['withdrawal_rate']*100:.1f}% per year",
-        "31% downgrade rate",
-        f"{params['base_speed']} ± 70 cases/month",
-        f"{params['policy_risk_prob']*100:.1f}% chance"
-    ],
-    "Source": [
-        "US Dept of State Visa Bulletin (May 2025)",
-        "CEAC data modeling",
-        "INA 203(b), 7% country cap",
-        "2024 DOS allocation memo",
-        "USCIS 2024 I-485 data",
-        "NSC internal downgrade stats (2025)",
-        "User adjustable",
-        "User adjustable"
-    ]
-})
+# Move backlog scenario and run button into sidebar
+backlog_mode = st.sidebar.selectbox(
+    label="Backlog Scenario (积压场景)",
+    options=["Optimistic", "Neutral", "Pessimistic"],
+    index=1,
+    help="Choose assumed severity of existing backlog"
+)
+run_simulation = st.sidebar.button("Run Simulation")
 
-st.markdown("### 📊 Assumptions Summary")
-st.dataframe(assumption_table, use_container_width=True)
-
-st.title("🇨🇳 EB2 Priority Date Forecast Simulator")
-
-# UI inputs
+# 主体输入项
 col1, col2 = st.columns(2)
 with col1:
     target_pd = st.date_input("Your Priority Date (你的优先日)", value=datetime(2022, 11, 1))
 with col2:
     trials = st.slider("Number of Simulations (模拟次数)", min_value=100, max_value=2000, value=300, step=100)
 
-backlog_mode = st.selectbox("Backlog Scenario (积压场景)", options=["Optimistic", "Neutral", "Pessimistic"], index=1)
-
-# Define class and run model
+# 定义模拟器类
 class EB2Predictor:
-    def __init__(self, target_pd, backlog_mode):
+    def __init__(self, target_pd, backlog_mode, params):
         self.target_pd = pd.to_datetime(target_pd)
         self.backlog_mode = backlog_mode
-        self.base_speed = params['base_speed'] * historical_speed_avg
+        self.params = params
         self.speed_variation = lognorm(s=0.25)
-        self.withdrawal_rate = params['withdrawal_rate']
-        self.policy_prob = params['policy_risk_prob']
         self.policy_impact = {
             'positive': [0.02, params['positive_policy_boost']],
             'negative': [-params['negative_policy_penalty'], -0.05]
@@ -179,7 +145,7 @@ class EB2Predictor:
             return pd.Series(np.random.randint(400, 900, len(months)), index=months)
 
     def _policy_adjustment(self):
-        if np.random.rand() < self.policy_prob:
+        if np.random.rand() < self.params['policy_risk_prob']:
             direction = np.random.choice(['positive', 'negative'], p=[0.3, 0.7])
             return 1 + np.random.uniform(*self.policy_impact[direction])
         return 1
@@ -192,8 +158,11 @@ class EB2Predictor:
 
         while current < target_idx and months < 120:
             policy_factor = self._policy_adjustment()
-            actual_speed = int(self.base_speed * self.speed_variation.rvs() * policy_factor)
-            withdrawals = int(backlog.sum() * (self.withdrawal_rate / 12))
+            actual_speed = int(min(
+                self.params['monthly_quota'],
+                self.params['base_speed'] * historical_speed_avg * self.speed_variation.rvs() * policy_factor
+            ))
+            withdrawals = int(backlog.sum() * (self.params['withdrawal_rate'] / 12))
             actual_speed += withdrawals
 
             for i in range(current, len(backlog)):
@@ -213,9 +182,10 @@ class EB2Predictor:
     def simulate(self, n):
         return pd.Series([self.simulate_once() for _ in range(n)])
 
-if st.button("Run Simulation"):
+# 执行模拟逻辑
+if run_simulation:
     with st.spinner("Running simulation... 模型运行中..."):
-        model = EB2Predictor(target_pd=target_pd, backlog_mode=backlog_mode)
+        model = EB2Predictor(target_pd=target_pd, backlog_mode=backlog_mode, params=params)
         results = model.simulate(trials)
 
     fig, ax = plt.subplots(figsize=(10, 6))
