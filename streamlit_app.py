@@ -63,6 +63,23 @@ assumption_table = pd.DataFrame({
 st.markdown("### 📊 Assumptions Summary")
 st.dataframe(assumption_table, use_container_width=True)
 
+# Re-add app interface
+st.title("🇨🇳 EB2 Priority Date Forecast Simulator")
+
+st.markdown("""
+This simulator uses a real-data-seeded Monte Carlo model to project when a specific Priority Date (PD) might become current.
+You can change assumptions to see how backlog level and policy risk affect expected wait times.
+""")
+
+# User inputs
+col1, col2 = st.columns(2)
+with col1:
+    target_pd = st.date_input("Your Priority Date", value=datetime(2022, 11, 1))
+with col2:
+    trials = st.slider("Number of Simulations", min_value=100, max_value=2000, value=300, step=100)
+
+backlog_mode = st.selectbox("Backlog Scenario", options=["Optimistic", "Neutral", "Pessimistic"], index=1)
+
 class EB2PredictorImproved:
     def __init__(self, baseline_date='2025-05', target_pd='2022-11', backlog_mode='Neutral'):
         self.month = pd.to_datetime(baseline_date)
@@ -70,7 +87,7 @@ class EB2PredictorImproved:
         self.backlog_mode = backlog_mode
 
         self.annual_quota = 2803
-        self.base_processing_speed = 230 * historical_speed_avg  # now seeded by real movement
+        self.base_processing_speed = 230 * historical_speed_avg
         self.speed_variation = lognorm(s=0.25)
         self.withdrawal_rate = 0.112
         self.policy_change_prob = 0.10
@@ -88,13 +105,8 @@ class EB2PredictorImproved:
                 base = np.random.randint(300, 500)
             elif self.backlog_mode == 'Pessimistic':
                 base = np.random.randint(800, 1100)
-            else:  # Neutral
-                if date.year == 2021:
-                    base = np.random.randint(700, 1000)
-                elif date.year == 2022:
-                    base = np.random.randint(400, 600)
-                else:
-                    base = np.random.randint(300, 400)
+            else:
+                base = np.random.randint(400, 900)
             applicants.append(base)
         return pd.Series(data=applicants, index=date_index)
 
@@ -137,3 +149,26 @@ class EB2PredictorImproved:
 
     def simulate(self, trials=500):
         return pd.Series([self.__class__(target_pd=self.target_pd.strftime('%Y-%m'), backlog_mode=self.backlog_mode).simulate_single_run() for _ in range(trials)])
+
+if st.button("Run Simulation"):
+    with st.spinner("Running simulation..."):
+        simulator = EB2PredictorImproved(target_pd=target_pd.strftime('%Y-%m'), backlog_mode=backlog_mode)
+        results = simulator.simulate(trials=trials)
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    sns.histplot(results, bins=30, kde=True, color='steelblue', ax=ax)
+    ax.axvline(results.median(), color='red', linestyle='--', label=f'Median: {results.median()} months')
+    ax.set_title("Projected Wait Time Distribution")
+    ax.set_xlabel("Months to Current")
+    ax.set_ylabel("Simulation Count")
+    ax.legend()
+    st.pyplot(fig)
+
+    projected_date = pd.to_datetime('2025-05') + pd.DateOffset(months=int(results.median()))
+    st.markdown(f"""
+    ### 🧠 Simulation Summary
+    - Median wait time: **{int(results.median())} months**
+    - Expected PD becomes current: **{projected_date.strftime('%Y-%m')}**
+    - Range: {int(results.min())} to {int(results.max())} months
+    - Assumption Mode: **{backlog_mode}**
+    """)
