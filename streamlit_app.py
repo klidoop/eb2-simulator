@@ -34,7 +34,7 @@ presets = {
 }
 
 st.sidebar.header("🔧 Simulation Parameters")
-run_simulation = st.sidebar.button("Run Simulation")
+run_simulation = st.sidebar.button("🚀 Run Simulation 🚀", type="primary", help="Click to start EB2 forecast simulation")
 profile = st.sidebar.selectbox("Preset Profile", list(presets.keys()), help="Choose a predefined set of assumptions for backlog and risk")
 
 
