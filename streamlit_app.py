@@ -3,32 +3,18 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-import matplotlib
 from datetime import datetime
 from scipy.stats import lognorm
+from scipy.interpolate import UnivariateSpline
 
-# 使用真实的EB2排期数据来估算过去PD推进的速度（作为模拟的基础速度）
-historical_progress = pd.DataFrame({
-    "Cutoff": pd.to_datetime([
-        "12/31/2010", "12/31/2011", "12/31/2012", "12/31/2013", "12/31/2014",
-        "12/31/2015", "12/31/2016", "12/31/2017", "12/31/2018", "12/31/2019",
-        "12/31/2020", "12/31/2021", "12/31/2022", "12/31/2023", "12/31/2024",
-        "6/9/2025"
+# ==== 参数配置 ====
+historical_approvals_by_pd = pd.DataFrame({
+    'PD': pd.to_datetime([
+        "2020-12-15", "2021-01-01", "2021-06-01", "2021-12-01", "2022-06-01", "2022-12-01", "2023-06-01"
     ]),
-    "PD": pd.to_datetime([
-        "6/8/2006", "3/15/2008", "10/22/2007", "11/8/2008", "1/1/2010",
-        "2/1/2012", "9/22/2012", "7/1/2013", "7/1/2015", "6/22/2015",
-        "5/1/2016", "1/1/2019", "6/8/2019", "10/22/2019", "3/22/2020",
-        "12/15/2020"
-    ])
+    'Approved_I140_Main': [12000, 13000, 15500, 21000, 26000, 29762, 33000]
 })
-# 计算PD推进速度
-historical_progress["PD Delta"] = historical_progress["PD"].diff().dt.days.div(30).fillna(0)
-historical_progress["Time Delta"] = historical_progress["Cutoff"].diff().dt.days.div(30).fillna(0)
-historical_progress["Speed"] = historical_progress["PD Delta"] / historical_progress["Time Delta"]
-historical_speed_avg = historical_progress["Speed"].mean()
 
-# Preset profiles
 presets = {
     "Conservative": dict(base_speed=180, withdrawal_rate=0.08, policy_risk_prob=0.2, positive_policy_boost=0.05, negative_policy_penalty=0.3, spillover=1148),
     "Neutral": dict(base_speed=230, withdrawal_rate=0.112, policy_risk_prob=0.1, positive_policy_boost=0.1, negative_policy_penalty=0.15, spillover=1148),
@@ -36,188 +22,84 @@ presets = {
 }
 
 st.sidebar.header("🔧 Simulation Parameters")
-profile = st.sidebar.selectbox("Preset Profile", list(presets.keys()), help="Choose a predefined set of assumptions for backlog and risk")
+profile = st.sidebar.selectbox("Preset Profile", list(presets.keys()))
 
-# Force update on profile change
 if "last_profile" not in st.session_state:
     st.session_state.last_profile = profile
 if profile != st.session_state.last_profile:
     st.session_state.params = presets[profile].copy()
     st.session_state.last_profile = profile
-
-# Allow reset
 if "params" not in st.session_state or st.sidebar.button("Reset to Defaults"):
     st.session_state.params = presets[profile].copy()
 
 params = st.session_state.params
 params.setdefault("spillover", 1148)
 
-params["base_speed"] = st.sidebar.number_input(
-    label="Monthly Processing Base (基准处理速度)",
-    min_value=50,
-    max_value=1000,
-    value=params["base_speed"],
-    key="base_speed",
-    help="Average number of EB2 cases processed per month before adjustment"
-)
-params["withdrawal_rate"] = st.sidebar.slider(
-    label="Annual Withdrawal Rate (申请人流失率)",
-    min_value=0.0,
-    max_value=0.3,
-    value=params["withdrawal_rate"],
-    step=0.01,
-    key="withdrawal_rate",
-    help="Percentage of applicants who drop out or switch categories annually"
-)
-params["policy_risk_prob"] = st.sidebar.slider(
-    label="Policy Risk Probability (政策变动概率)",
-    min_value=0.0,
-    max_value=0.5,
-    value=params["policy_risk_prob"],
-    step=0.01,
-    key="policy_risk_prob",
-    help="Chance that a major immigration policy event affects processing speed in a given month"
-)
-params["positive_policy_boost"] = st.sidebar.slider(
-    label="Positive Policy Boost (%)",
-    min_value=0.0,
-    max_value=0.3,
-    value=params["positive_policy_boost"],
-    step=0.01,
-    key="positive_policy_boost",
-    help="If a positive policy change occurs, maximum boost to processing speed"
-)
-params["negative_policy_penalty"] = st.sidebar.slider(
-    label="Negative Policy Penalty (%)",
-    min_value=0.0,
-    max_value=0.5,
-    value=params["negative_policy_penalty"],
-    step=0.01,
-    key="negative_policy_penalty",
-    help="If a negative policy change occurs, maximum reduction to processing speed"
-)
-params["spillover"] = st.sidebar.number_input(
-    label="Family-Based Spillover to EB2-China (家庭类签证转回数量)",
-    min_value=0,
-    max_value=10000,
-    value=params["spillover"],
-    key="spillover",
-    help="Extra visas allocated to EB2 from family-based unused quota (e.g. 1148 in FY2025)"
-)
+params["base_speed"] = st.sidebar.number_input("Monthly Processing Base", 50, 1000, value=params["base_speed"], key="base_speed")
+params["withdrawal_rate"] = st.sidebar.slider("Annual Withdrawal Rate", 0.0, 0.3, value=params["withdrawal_rate"], step=0.01, key="withdrawal_rate")
+params["policy_risk_prob"] = st.sidebar.slider("Policy Risk Probability", 0.0, 0.5, value=params["policy_risk_prob"], step=0.01, key="policy_risk_prob")
+params["positive_policy_boost"] = st.sidebar.slider("Positive Policy Boost (%)", 0.0, 0.3, value=params["positive_policy_boost"], step=0.01, key="positive_policy_boost")
+params["negative_policy_penalty"] = st.sidebar.slider("Negative Policy Penalty (%)", 0.0, 0.5, value=params["negative_policy_penalty"], step=0.01, key="negative_policy_penalty")
+params["spillover"] = st.sidebar.number_input("Family-Based Spillover to EB2-China", 0, 10000, value=params["spillover"], key="spillover")
 
-# 计算配额（用于模型实际速度上限）
 params["monthly_quota"] = (2803 + params["spillover"]) / 12
+params["monthly_retention"] = (1 - params["withdrawal_rate"]) ** (1/12)
 
-# Move backlog scenario and run button into sidebar
-backlog_mode = st.sidebar.selectbox(
-    label="Backlog Scenario (积压场景)",
-    options=["Optimistic", "Neutral", "Pessimistic"],
-    index=1,
-    help="Choose assumed severity of existing backlog"
-)
-
-# 页面标题
 st.title("🇨🇳 EB2 Priority Date Forecast Simulator")
 
-# Assumptions Table
-assumption_table = pd.DataFrame({
-    "Parameter": [
-        "Baseline Date",
-        "Estimated Backlog (China EB2)",
-        "Annual Visa Quota",
-        "Family-based Spillover (FY2025)",
-        "Applicant Attrition Rate",
-        "EB3 Downgrade Probability",
-        "Monthly Processing Speed",
-        "Policy Risk Probability"
-    ],
-    "Value / Assumption": [
-        "May 2025 Final Action Date = Dec 2020",
-        "38,000 cases (incl. dependents)",
-        "2,803 per year",
-        f"{params['spillover']} extra (user-defined)",
-        f"{params['withdrawal_rate']*100:.1f}% per year",
-        "31% downgrade rate",
-        f"{params['base_speed']} ± 70 cases/month",
-        f"{params['policy_risk_prob']*100:.1f}% chance"
-    ],
-    "Source": [
-        "US Dept of State Visa Bulletin (May 2025)",
-        "CEAC data modeling",
-        "INA 203(b), 7% country cap",
-        "User input",
-        "USCIS 2024 I-485 data",
-        "NSC internal downgrade stats (2025)",
-        "User adjustable",
-        "User adjustable"
-    ]
-})
-st.markdown("### 📊 Assumptions Summary")
-st.dataframe(assumption_table, use_container_width=True)
-
-# 主体输入项
 col1, col2 = st.columns(2)
 with col1:
-    target_pd = st.date_input("Your Priority Date (你的优先日)", value=datetime(2022, 11, 1))
+    use_pd = st.checkbox("Estimate from Priority Date (根据PD估算排位)", value=True)
+    if use_pd:
+        pd_input = st.date_input("Your Priority Date (你的优先日)", value=datetime(2022, 11, 10))
+        multiplier = st.number_input("Family Multiplier (配偶子女占位因子)", min_value=1.0, max_value=3.0, value=1.7, step=0.1)
+
+        def estimate_position_by_pd(pd_date):
+            df = historical_approvals_by_pd.sort_values("PD")
+            timestamps = df["PD"].astype(int) / 1e9
+            approvals = df["Approved_I140_Main"]
+            spline = UnivariateSpline(timestamps, approvals, s=0.5 * len(df))
+            estimated_main = spline(pd_date.timestamp())
+            return int(estimated_main * multiplier)
+
+        user_position = estimate_position_by_pd(pd_input)
+        st.markdown(f"#### 🎯 Estimated Queue Position: **{user_position:,}**")
+    else:
+        user_position = st.number_input("Your Queue Position (你的排位人数)", min_value=1000, max_value=100000, value=50595)
+
 with col2:
-    trials = st.slider("Number of Simulations (模拟次数)", min_value=100, max_value=2000, value=300, step=100)
+    trials = st.slider("Number of Simulations", 100, 2000, 300, step=100)
     run_simulation_right = st.button("🚀 Run Simulation 🚀", type="primary")
     if run_simulation_right:
         run_simulation = True
 
-# 定义模拟器类
 class EB2Predictor:
-    def __init__(self, target_pd, backlog_mode, params):
-        self.target_pd = pd.to_datetime(target_pd)
-        self.backlog_mode = backlog_mode
+    def __init__(self, user_position, params):
+        self.user_position = user_position
         self.params = params
-        self.speed_variation = lognorm(s=0.25)
-        self.policy_impact = {
-            'positive': [0.02, params['positive_policy_boost']],
-            'negative': [-params['negative_policy_penalty'], -0.05]
-        }
-        self.histogram = self._generate_backlog()
-
-    def _generate_backlog(self):
-        months = pd.date_range('2020-12', '2023-01', freq='MS')
-        if self.backlog_mode == 'Optimistic':
-            return pd.Series(np.random.randint(300, 500, len(months)), index=months)
-        elif self.backlog_mode == 'Pessimistic':
-            return pd.Series(np.random.randint(800, 1100, len(months)), index=months)
-        else:
-            return pd.Series(np.random.randint(400, 900, len(months)), index=months)
-
-    def _policy_adjustment(self):
-        if np.random.rand() < self.params['policy_risk_prob']:
-            direction = np.random.choice(['positive', 'negative'], p=[0.3, 0.7])
-            return 1 + np.random.uniform(*self.policy_impact[direction])
-        return 1
+        self.monthly_quota = (2803 + params.get("spillover", 0)) / 12
+        self.monthly_retention = (1 - params.get("withdrawal_rate", 0.135)) ** (1 / 12)
 
     def simulate_once(self):
-        backlog = self.histogram.copy()
-        current = 0
-        target_idx = np.searchsorted(backlog.index, self.target_pd)
+        position = self.user_position
+        cumulative = 0
         months = 0
 
-        while current < target_idx and months < 120:
-            policy_factor = self._policy_adjustment()
-            actual_speed = int(min(
-                self.params['monthly_quota'],
-                self.params['base_speed'] * historical_speed_avg * self.speed_variation.rvs() * policy_factor
-            ))
-            withdrawals = int(backlog.sum() * (self.params['withdrawal_rate'] / 12))
-            actual_speed += withdrawals
-
-            for i in range(current, len(backlog)):
-                if actual_speed <= 0:
-                    break
-                if backlog.iloc[i] <= actual_speed:
-                    actual_speed -= backlog.iloc[i]
-                    backlog.iloc[i] = 0
-                    current = i + 1
+        while cumulative < position and months < 240:
+            if np.random.rand() < self.params['policy_risk_prob']:
+                direction = np.random.choice(['positive', 'negative'], p=[0.3, 0.7])
+                if direction == 'positive':
+                    multiplier = 1 + np.random.uniform(0.02, self.params['positive_policy_boost'])
                 else:
-                    backlog.iloc[i] -= actual_speed
-                    actual_speed = 0
+                    multiplier = 1 - np.random.uniform(self.params['negative_policy_penalty'], 0.05)
+            else:
+                multiplier = 1
+
+            speed_variation = lognorm(s=0.25).rvs()
+            actual_speed = min(self.monthly_quota, self.params["base_speed"] * speed_variation * multiplier)
+
+            cumulative += actual_speed
+            position = int(position * self.monthly_retention)
             months += 1
 
         return months
@@ -225,31 +107,28 @@ class EB2Predictor:
     def simulate(self, n):
         return pd.Series([self.simulate_once() for _ in range(n)])
 
-# 初始化历史记录存储
 if "simulation_history" not in st.session_state:
     st.session_state.simulation_history = []
 
-# 执行模拟逻辑
 if run_simulation_right:
-    with st.spinner("Running simulation... 模型运行中..."):
-        model = EB2Predictor(target_pd=target_pd, backlog_mode=backlog_mode, params=params)
+    with st.spinner("Running simulation..."):
+        model = EB2Predictor(user_position=user_position, params=params)
         results = model.simulate(trials)
 
     fig, ax = plt.subplots(figsize=(10, 6))
     sns.histplot(results, bins=30, kde=True, ax=ax, color='skyblue')
     ax.axvline(results.median(), color='red', linestyle='--', label=f'Median: {results.median()} months')
-    ax.set_title("Projected Wait Time Distribution (预测等待时间分布)")
-    ax.set_xlabel("Months to Current (距离排到的月份)")
-    ax.set_ylabel("Simulation Count (模拟次数)")
+    ax.set_title("Projected Wait Time Distribution")
+    ax.set_xlabel("Months to Current")
+    ax.set_ylabel("Simulation Count")
     ax.legend()
     st.pyplot(fig)
 
-    projected_date = pd.to_datetime("2025-05") + pd.DateOffset(months=int(results.median()))
+    projected_date = pd.Timestamp("2025-07-01") + pd.DateOffset(months=int(results.median()))
 
-    # 保存本次模拟记录
     st.session_state.simulation_history.append({
         "Profile": profile,
-        "Backlog": backlog_mode,
+        "Position": user_position,
         "Spillover": params["spillover"],
         "MonthlySpeed": params["base_speed"],
         "WithdrawalRate": params["withdrawal_rate"],
@@ -260,14 +139,13 @@ if run_simulation_right:
     })
 
     st.markdown(f"""
-    ### 🧠 Simulation Summary 模拟结果摘要
+    ### 🧠 Simulation Summary
     - Median wait time: **{int(results.median())} months**
     - Expected PD becomes current: **{projected_date.strftime('%Y-%m')}**
     - Range: {int(results.min())} to {int(results.max())} months
-    - Assumption Mode: **{backlog_mode}**
+    - Assumption Mode: **{profile}**
     """)
 
-    # 展示历史对比表格
     if st.session_state.simulation_history:
         st.markdown("### 📂 Comparison of Saved Simulations")
         hist_df = pd.DataFrame(st.session_state.simulation_history)
