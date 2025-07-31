@@ -56,7 +56,7 @@ with col1:
 
         def estimate_position_by_pd(pd_date):
             df = historical_approvals_by_pd.sort_values("PD")
-            timestamps = df["PD"].view('int64') / 1e9
+            timestamps = df["PD"].astype('int64') / 1e9
             approvals = df["Approved_I140_Main"]
             spline = UnivariateSpline(timestamps, approvals, s=0.5 * len(df))
             estimated_main = spline(pd_date.timestamp())
