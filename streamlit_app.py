@@ -62,12 +62,12 @@ with col1:
             estimated_main = spline(pd_date.timestamp())
             return int(estimated_main * multiplier)
             
-        # ✅ 新增这段类型转换处理
-    if isinstance(pd_date, datetime.date) and not isinstance(pd_date, datetime):
-        pd_date = datetime.combine(pd_date, datetime.min.time())
-
-    estimated_main = spline(pd_date.timestamp())
-    return int(estimated_main * multiplier)
+                # ✅ 新增这段类型转换处理
+            if isinstance(pd_date, datetime.date) and not isinstance(pd_date, datetime):
+                pd_date = datetime.combine(pd_date, datetime.min.time())
+        
+            estimated_main = spline(pd_date.timestamp())
+            return int(estimated_main * multiplier)
 
         user_position = estimate_position_by_pd(pd_input)
         st.markdown(f"#### 🎯 Estimated Queue Position: **{user_position:,}**")
