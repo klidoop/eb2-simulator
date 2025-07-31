@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from datetime import datetime
+from datetime import datetime, date
 from scipy.stats import lognorm
 from scipy.interpolate import UnivariateSpline
 
@@ -59,13 +59,10 @@ with col1:
             timestamps = df["PD"].astype('int64') / 1e9
             approvals = df["Approved_I140_Main"]
             spline = UnivariateSpline(timestamps, approvals, s=0.5 * len(df))
-            estimated_main = spline(pd_date.timestamp())
-            return int(estimated_main * multiplier)
-            
-                # ✅ 新增这段类型转换处理
-            if isinstance(pd_date, datetime.date) and not isinstance(pd_date, datetime):
+
+            if isinstance(pd_date, date) and not isinstance(pd_date, datetime):
                 pd_date = datetime.combine(pd_date, datetime.min.time())
-        
+
             estimated_main = spline(pd_date.timestamp())
             return int(estimated_main * multiplier)
 
