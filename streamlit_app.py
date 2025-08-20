@@ -52,7 +52,7 @@ with col1:
     use_pd = st.checkbox("Estimate from Priority Date (根据PD估算排位)", value=True)
     if use_pd:
         pd_input = st.date_input("Your Priority Date (你的优先日)", value=datetime(2022, 11, 10))
-        multiplier = st.number_input("Family Multiplier (配偶子女占位因子)", min_value=1.0, max_value=3.0, value=1.7, step=0.1)
+        multiplier = st.number_input("Family Multiplier (配偶子女占位因子)", min_value=1.0, max_value=2.0, value=1.3, step=0.05)
 
         def estimate_position_by_pd(pd_date):
             df = historical_approvals_by_pd.sort_values("PD")
