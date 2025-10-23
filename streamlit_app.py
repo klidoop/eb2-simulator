@@ -16,9 +16,9 @@ historical_approvals_by_pd = pd.DataFrame({
 })
 
 presets = {
-    "Conservative": dict(base_speed=180, withdrawal_rate=0.08, policy_risk_prob=0.2, positive_policy_boost=0.05, negative_policy_penalty=0.3, spillover=1148),
-    "Neutral": dict(base_speed=230, withdrawal_rate=0.112, policy_risk_prob=0.1, positive_policy_boost=0.1, negative_policy_penalty=0.15, spillover=1148),
-    "Aggressive": dict(base_speed=280, withdrawal_rate=0.15, policy_risk_prob=0.05, positive_policy_boost=0.2, negative_policy_penalty=0.05, spillover=1148)
+    "Conservative": dict(base_speed=200, withdrawal_rate=0.08, policy_risk_prob=0.2, positive_policy_boost=0.05, negative_policy_penalty=0.3, spillover=1148),
+    "Neutral": dict(base_speed=260, withdrawal_rate=0.112, policy_risk_prob=0.1, positive_policy_boost=0.1, negative_policy_penalty=0.15, spillover=1148),
+    "Aggressive": dict(base_speed=320, withdrawal_rate=0.15, policy_risk_prob=0.05, positive_policy_boost=0.2, negative_policy_penalty=0.05, spillover=1148)
 }
 
 st.sidebar.header("🔧 Simulation Parameters")
@@ -52,7 +52,7 @@ with col1:
     use_pd = st.checkbox("Estimate from Priority Date (根据PD估算排位)", value=True)
     if use_pd:
         pd_input = st.date_input("Your Priority Date (你的优先日)", value=datetime(2022, 11, 10))
-        multiplier = st.number_input("Family Multiplier (配偶子女占位因子)", min_value=1.0, max_value=2.0, value=1.3, step=0.05)
+        multiplier = st.number_input("Family Multiplier (配偶子女占位因子)", min_value=1.0, max_value=3.0, value=1.7, step=0.1)
 
         def estimate_position_by_pd(pd_date):
             df = historical_approvals_by_pd.sort_values("PD")
