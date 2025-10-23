@@ -45,13 +45,6 @@ params["spillover"] = st.sidebar.number_input("Family-Based Spillover to EB2-Chi
 params["monthly_quota"] = (2803 + params["spillover"]) / 12
 params["monthly_retention"] = (1 - params["withdrawal_rate"]) ** (1/12)
 
-# Add in sidebar:
-current_processing_pd = st.sidebar.date_input("当前排期已处理至 PD", value=datetime(2021, 12, 1))
-
-# Replace fixed simulation start:
-projected_date = pd.Timestamp(current_processing_pd) + pd.DateOffset(months=int(results.median()))
-
-
 st.title("🇨🇳 EB2 Priority Date Forecast Simulator")
 
 col1, col2 = st.columns(2)
